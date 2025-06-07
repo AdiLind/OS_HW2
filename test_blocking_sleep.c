@@ -1,7 +1,6 @@
 /* how to compile 
 gcc -O0 -g -Wall -Wextra test_blocking_sleep.c uthreads.o -o test_blocking_sleep
-gcc -std=c17 -Wall -Wextra -D_GNU_SOURCE -D_POSIX_C_SOURCE=200809L     test_blocking_sleep.c uthreads.
-c -o test_blocking_sleep
+gcc -std=c17 -Wall -Wextra -D_GNU_SOURCE -D_POSIX_C_SOURCE=200809L     test_blocking_sleep.c uthreads.c -o test_blocking_sleep
 
 */
 
@@ -118,7 +117,6 @@ void test_error_cases(void) {
     uthread_block(tid); // Block it so it doesn't interfere
     
     printf("\nError tests completed successfully!\n");
-    uthread_terminate(0);
 }
 
 // Main test function

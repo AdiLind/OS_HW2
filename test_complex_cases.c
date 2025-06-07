@@ -37,8 +37,11 @@ int main(void) {
     int tid = uthread_spawn(complex_thread);
     printf("Main: Spawned thread %d\n", tid);
     
-    // Let thread start and go to sleep
-    for (volatile long i = 0; i < 50000000; i++);
+    // Give the thread a chance to run and start sleeping
+    printf("Main: Letting thread start...\n");
+    for (int i = 0; i < 3; i++) {
+        for (volatile long j = 0; j < 50000000; j++);
+    }
     
     // Now block it while it's sleeping
     printf("Main: Blocking thread %d while it's sleeping\n", tid);

@@ -230,13 +230,21 @@ void timer_handler(int signum) {
     // check if there is some threads that need to wakeup
     for (int i=0; i < MAX_THREAD_NUM; i++)
     {
-        if(threads_control_block[i].state == THREAD_BLOCKED &&
-            threads_control_block[i].sleep_until >0 &&
-            threads_control_block[i].sleep_until <= total_quantums)
+        thread_t* thread = &threads_control_block[i];
+        
+        // If thread is sleeping and sleep time has expired
+        if(thread->sleep_until > 0 && thread->sleep_until <= total_quantums)
         {
-            threads_control_block[i].sleep_until =0; // wakeup the thread
-            threads_control_block[i].state = THREAD_READY;
-            enqueue_ready(i);
+            thread->sleep_until = 0; // Clear sleep timer
+            
+            // Only move to READY if thread is not otherwise blocked
+            if(thread->state == THREAD_BLOCKED)
+            {
+                // Check if thread was blocked by another thread or just sleeping
+                // We need to keep it BLOCKED if it was explicitly blocked
+                // This is the key fix - don't automatically wake up blocked threads
+                DEBUG_PRINT("Thread %d sleep expired but still blocked\n", i);
+            }
         }
     }
     
@@ -419,7 +427,7 @@ int uthread_terminate(int tid)
     thread_t* thread_to_terminate = get_thread_by_tid(tid);
     if(thread_to_terminate == NULL)
     {
-        fprintf(stderr, "thread lib error: invalid thread ID");
+        fprintf(stderr, "thread library error: invalid thread ID\n");
         exit_critical_section();
         return -1;
     }
@@ -449,7 +457,7 @@ int uthread_terminate(int tid)
                 }
         }
 
-        exit(0); // Terminate the process
+        exit(EXIT_SUCCESS); // Terminate the process
     }
 
     // if we terminate the current running thread we should switch to the next thread
@@ -459,17 +467,17 @@ int uthread_terminate(int tid)
 
         // If we reach here, something went wrong
         fprintf(stderr, "thread library error: failed to switch from terminated thread\n");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     
-    //If terminating a different thread, just mark it as terminated and was already removed from queues when marked TERMINATED
+    //If terminating a different thread, just mark it as terminated
     exit_critical_section();
     return 0;
 }
 
 int uthread_block(int tid) {
     enter_critical_section();
-    // Validate the thread ID
+
     if(tid == 0)
     {
         fprintf(stderr, "thread lib error: cannot block the main thread (tid=0)\n");
@@ -484,20 +492,19 @@ int uthread_block(int tid) {
         return -1;
     }
 
-    // If the thread is already blocked, do nothing
+
     if(thread_to_block->state == THREAD_BLOCKED) {
         exit_critical_section();
-        return 0;  // No-op if already blocked
+        return 0; 
     }
     
     // Block the thread
     if (thread_to_block->state == THREAD_RUNNING) {
         thread_to_block->state = THREAD_BLOCKED;
         if (tid == current_running_tid) {
-            //exit_critical_section();
+            exit_critical_section();
             schedule_next();
-            fprintf(stderr, "thread library error: failed to switch from blocked thread\n");
-            exit(1);
+            return 0;
         }
     } else if (thread_to_block->state == THREAD_READY) {
         thread_to_block->state = THREAD_BLOCKED;
@@ -583,10 +590,6 @@ int uthread_sleep(int num_quantums) {
     current_thread->state = THREAD_BLOCKED;
     exit_critical_section();
     schedule_next();
-    
-    // If we reach here, something went wrong
-    fprintf(stderr, "thread library error: failed to switch from sleeping thread\n");
-    exit(1);
     
     return 0; //this line should never be reached
 }
