@@ -1,3 +1,7 @@
+/*gcc -std=c17 -Wall -Wextra -O0 -g \
+  -D_GNU_SOURCE -D_POSIX_C_SOURCE=200809L \
+  test_timer_scheduler.c uthreads.c -o test_timer_scheduler */
+
 #include "uthreads.h"
 #include <stdio.h>
 
